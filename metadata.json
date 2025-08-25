@@ -1,0 +1,8 @@
+{
+  "name": "Net Speed Custom",
+  "description": "Show current net speed on Ubuntu top bar.",
+  "uuid": "netspeed-custom@cengiz7",
+  "url": "https://github.com/cengiz7/gnome-shell-extension-net-speed-custom",
+  "version": 13,
+  "shell-version": ["45", "46", "47", "48"]
+}
