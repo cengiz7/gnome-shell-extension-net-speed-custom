@@ -1,0 +1,8 @@
+{
+  "name": "Net Speed Custom",
+  "description": "Show current network speed with customizable colors and refresh rate on the GNOME top bar.",
+  "uuid": "net-speed-custom@cengiz7.github.io",
+  "url": "https://github.com/cengiz7/gnome-shell-extension-net-speed-custom",
+  "version": 14,
+  "shell-version": ["45", "46", "47"]
+}

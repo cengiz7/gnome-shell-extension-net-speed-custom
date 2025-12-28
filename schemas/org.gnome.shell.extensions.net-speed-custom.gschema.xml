@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.net-speed-custom" path="/org/gnome/shell/extensions/net-speed-custom/">
+    <key name="refresh-interval" type="d">
+      <default>1.0</default>
+      <summary>Refresh interval in seconds</summary>
+      <description>Decimal seconds between refreshes (e.g., 0.5, 1.0).</description>
+    </key>
+    <key name="download-color" type="s">
+      <default>'#3fd7e5'</default>
+      <summary>Download color</summary>
+      <description>Hex color code for download speed text (e.g., #3fd7e5).</description>
+    </key>
+    <key name="upload-color" type="s">
+      <default>'#ffb84d'</default>
+      <summary>Upload color</summary>
+      <description>Hex color code for upload speed text (e.g., #ffb84d).</description>
+    </key>
+    <key name="font-size" type="s">
+      <default>'inherit'</default>
+      <summary>Font size</summary>
+      <description>Font size for speed text (e.g., 'inherit', '14px', '1.2em').</description>
+    </key>
+    <key name="down-arrow" type="s">
+      <default>'⇣'</default>
+      <summary>Download arrow symbol</summary>
+      <description>Unicode character for download indicator (e.g., '⇣', '↓', '⬇').</description>
+    </key>
+    <key name="up-arrow" type="s">
+      <default>'⇡'</default>
+      <summary>Upload arrow symbol</summary>
+      <description>Unicode character for upload indicator (e.g., '⇡', '↑', '⬆').</description>
+    </key>
+  </schema>
+</schemalist>
