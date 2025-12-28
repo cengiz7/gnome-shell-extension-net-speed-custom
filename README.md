@@ -1,7 +1,7 @@
 Net Speed Custom
 =========
 
-Show current net speed on Ubuntu panel menu with highly customizable extension.
+Show current net speed on Ubuntu panel menu with highly customizable and lightweight shell extension.
 
 ## Features:
   1. **Customizable font size**: Available formats are `14px, 1.2em, 120% or "inherit"`. Default (inherit)
@@ -50,5 +50,5 @@ If GSettings schema isn't available or compatible in your OS then the extension 
 
 Exclude test files when packaging:
 ```bash
-gnome-extensions pack --extra-source=gsettings-helper.js --extra-source=schemas/
+gnome-extensions pack --extra-source=gsettings-helper.js --extra-source=schemas/ --extra-source=README.md
 ```

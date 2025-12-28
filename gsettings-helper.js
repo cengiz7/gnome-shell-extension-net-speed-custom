@@ -1,32 +1,36 @@
-import Gio from 'gi://Gio';
+import Gio from "gi://Gio";
 
-const SCHEMA_ID = 'org.gnome.shell.extensions.net-speed-custom';
+const SCHEMA_ID = "org.gnome.shell.extensions.net-speed-custom";
 
 export function createSettings(extension) {
   const GioSSS = Gio.SettingsSchemaSource;
   let schemaSource = GioSSS.get_default();
   let schemaObj = null;
-  
+
   if (schemaSource) {
     schemaObj = schemaSource.lookup(SCHEMA_ID, true);
   }
-  
+
   if (!schemaObj && extension) {
     try {
-      const schemaDir = extension.dir.get_child('schemas').get_path();
-      const customSource = GioSSS.new_from_directory(schemaDir, schemaSource, false);
+      const schemaDir = extension.dir.get_child("schemas").get_path();
+      const customSource = GioSSS.new_from_directory(
+        schemaDir,
+        schemaSource,
+        false
+      );
       schemaObj = customSource.lookup(SCHEMA_ID, true);
     } catch (e) {
       console.warn(`Schema ${SCHEMA_ID} lookup failed: ${e}`);
       return null;
     }
   }
-  
+
   if (!schemaObj) {
     console.warn(`Schema ${SCHEMA_ID} not found`);
     return null;
   }
-  
+
   try {
     return new Gio.Settings({ settings_schema: schemaObj });
   } catch (e) {

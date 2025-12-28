@@ -564,7 +564,6 @@ const Indicator = GObject.registerClass(
   }
 );
 
-
 /**
  * Main extension class for Net Speed Custom.
  *
@@ -590,17 +589,23 @@ export default class NetSpeedCustom extends Extension {
     this._settings = GSettingsHelper.createSettings(this);
     if (this._settings) {
       this._refreshInterval =
-        GSettingsHelper.readDouble(this._settings, "refresh-interval") || REFRESH_INTERVAL;
+        GSettingsHelper.readDouble(this._settings, "refresh-interval") ||
+        REFRESH_INTERVAL;
       this._downloadColor =
-        GSettingsHelper.readString(this._settings, "download-color") || DEFAULT_DOWNLOAD_COLOR;
+        GSettingsHelper.readString(this._settings, "download-color") ||
+        DEFAULT_DOWNLOAD_COLOR;
       this._uploadColor =
-        GSettingsHelper.readString(this._settings, "upload-color") || DEFAULT_UPLOAD_COLOR;
+        GSettingsHelper.readString(this._settings, "upload-color") ||
+        DEFAULT_UPLOAD_COLOR;
       this._fontSize =
-        GSettingsHelper.readString(this._settings, "font-size") || DEFAULT_FONT_SIZE;
+        GSettingsHelper.readString(this._settings, "font-size") ||
+        DEFAULT_FONT_SIZE;
       this._downArrow =
-        GSettingsHelper.readString(this._settings, "down-arrow") || DEFAULT_DOWN_ARROW;
+        GSettingsHelper.readString(this._settings, "down-arrow") ||
+        DEFAULT_DOWN_ARROW;
       this._upArrow =
-        GSettingsHelper.readString(this._settings, "up-arrow") || DEFAULT_UP_ARROW;
+        GSettingsHelper.readString(this._settings, "up-arrow") ||
+        DEFAULT_UP_ARROW;
     } else {
       this._refreshInterval = REFRESH_INTERVAL;
       this._downloadColor = DEFAULT_DOWNLOAD_COLOR;
