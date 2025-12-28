@@ -133,6 +133,12 @@ const toSpeedParts = (speed, downArrow, upArrow) => {
   return { downloadText, uploadText };
 };
 
+/**
+ * Net speed indicator panel button.
+ *
+ * @class Indicator
+ * @extends PanelMenu.Button
+ */
 const Indicator = GObject.registerClass(
   class Indicator extends PanelMenu.Button {
     _init() {
@@ -558,38 +564,43 @@ const Indicator = GObject.registerClass(
   }
 );
 
+
+/**
+ * Main extension class for Net Speed Custom.
+ *
+ * @class NetSpeedCustom
+ * @extends Extension
+ */
 export default class NetSpeedCustom extends Extension {
+  /**
+   * @param {object} metadata - Extension metadata
+   */
   constructor(metadata) {
     super(metadata);
-
     this._metadata = metadata;
     this._uuid = metadata.uuid;
     this._settings = null;
   }
 
+  /**
+   * Load settings from GSettings or use defaults.
+   * @private
+   */
   _loadSettings() {
-    // Try to use GSettings for persistence, fall back to defaults
     this._settings = GSettingsHelper.createSettings(this);
-
     if (this._settings) {
       this._refreshInterval =
-        GSettingsHelper.readDouble(this._settings, "refresh-interval") ||
-        REFRESH_INTERVAL;
+        GSettingsHelper.readDouble(this._settings, "refresh-interval") || REFRESH_INTERVAL;
       this._downloadColor =
-        GSettingsHelper.readString(this._settings, "download-color") ||
-        DEFAULT_DOWNLOAD_COLOR;
+        GSettingsHelper.readString(this._settings, "download-color") || DEFAULT_DOWNLOAD_COLOR;
       this._uploadColor =
-        GSettingsHelper.readString(this._settings, "upload-color") ||
-        DEFAULT_UPLOAD_COLOR;
+        GSettingsHelper.readString(this._settings, "upload-color") || DEFAULT_UPLOAD_COLOR;
       this._fontSize =
-        GSettingsHelper.readString(this._settings, "font-size") ||
-        DEFAULT_FONT_SIZE;
+        GSettingsHelper.readString(this._settings, "font-size") || DEFAULT_FONT_SIZE;
       this._downArrow =
-        GSettingsHelper.readString(this._settings, "down-arrow") ||
-        DEFAULT_DOWN_ARROW;
+        GSettingsHelper.readString(this._settings, "down-arrow") || DEFAULT_DOWN_ARROW;
       this._upArrow =
-        GSettingsHelper.readString(this._settings, "up-arrow") ||
-        DEFAULT_UP_ARROW;
+        GSettingsHelper.readString(this._settings, "up-arrow") || DEFAULT_UP_ARROW;
     } else {
       this._refreshInterval = REFRESH_INTERVAL;
       this._downloadColor = DEFAULT_DOWNLOAD_COLOR;
@@ -600,12 +611,12 @@ export default class NetSpeedCustom extends Extension {
     }
   }
 
+  /**
+   * Save current settings to GSettings.
+   * @private
+   */
   _saveSettings() {
-    // Only save if GSettings is available
-    if (!this._settings) {
-      return;
-    }
-
+    if (!this._settings) return;
     GSettingsHelper.writeDouble(
       this._settings,
       "refresh-interval",
@@ -638,18 +649,16 @@ export default class NetSpeedCustom extends Extension {
     );
   }
 
+  /**
+   * Called when the extension is enabled.
+   */
   enable() {
-    // No external stylesheet needed; colors are set inline.
     this._textDecoder = new TextDecoder();
     this._lastSum = { down: 0, up: 0 };
-    this._lastTime = GLib.get_monotonic_time() / 1e6; // seconds
+    this._lastTime = GLib.get_monotonic_time() / 1e6;
     this._timeout = null;
-
-    // Load persisted settings (if any) before creating UI so entry shows saved value
     this._loadSettings();
-
     this._indicator = new Indicator();
-    // If refresh interval/color/font/arrow settings loaded, apply to indicator
     if (
       this._downloadColor ||
       this._uploadColor ||
@@ -669,21 +678,21 @@ export default class NetSpeedCustom extends Extension {
       this._indicator.setRefreshInterval(this._refreshInterval);
     }
     Main.panel.addToStatusArea(this._uuid, this._indicator, 0, "right");
-
     this._indicator.setOnRefreshChanged(() => {
-      // Update our value from indicator
       this._refreshInterval = this._indicator._refreshInterval;
       this._restartTimeout();
       this._saveSettings();
     });
-
     this._indicator.setOnColorFontChanged(() => {
       this._saveSettings();
     });
-
     this._startTimeout();
   }
 
+  /**
+   * Start the periodic update timeout.
+   * @private
+   */
   _startTimeout() {
     if (this._timeout) {
       GLib.source_remove(this._timeout);
@@ -705,13 +714,16 @@ export default class NetSpeedCustom extends Extension {
         const arrows = this._indicator.getArrows();
         const parts = toSpeedParts(speed, arrows.downArrow, arrows.upArrow);
         this._indicator.setText(parts);
-        // If refreshInterval changed, restart timer with new interval
         this._restartTimeout();
         return GLib.SOURCE_REMOVE;
       }
     );
   }
 
+  /**
+   * Restart the periodic update timeout.
+   * @private
+   */
   _restartTimeout() {
     if (this._timeout) {
       GLib.source_remove(this._timeout);
@@ -720,71 +732,63 @@ export default class NetSpeedCustom extends Extension {
     this._startTimeout();
   }
 
+  /**
+   * Called when the extension is disabled.
+   */
   disable() {
-    // Remove main loop source
     if (this._timeout != null) {
       GLib.source_remove(this._timeout);
       this._timeout = null;
     }
-
-    // Destroy all objects
     if (this._indicator != null) {
       this._indicator.destroy();
       this._indicator = null;
     }
-
-    // Clear all references
     this._textDecoder = null;
     this._lastSum = null;
     this._lastTime = null;
     this._settings = null;
   }
 
+  /**
+   * Get current network speed.
+   * @param {number} refreshInterval - Interval in seconds
+   * @returns {{down: number, up: number}} Bytes per second
+   */
   getCurrentNetSpeed(refreshInterval) {
     const speed = { down: 0, up: 0 };
-
     const inputFile = Gio.File.new_for_path("/proc/net/dev");
     const [, content] = inputFile.load_contents(null);
     const lines = this._textDecoder.decode(content).split("\n");
-
     let sumDown = 0;
     let sumUp = 0;
-
     for (const line of lines) {
       const fields = line.trim().split(/[:\s]+/);
       if (fields.length < 17) continue;
       const name = fields[0];
       if (isVirtualIface(name)) continue;
-
       const downBytes = Number.parseInt(fields[1]);
       const upBytes = Number.parseInt(fields[9]);
       if (isNaN(downBytes) || isNaN(upBytes)) continue;
-
       sumDown += downBytes;
       sumUp += upBytes;
     }
-
     if (this._lastSum["down"] === 0) {
       this._lastSum["down"] = sumDown;
     }
     if (this._lastSum["up"] === 0) {
       this._lastSum["up"] = sumUp;
     }
-
-    // Use the passed refreshInterval, or fallback to instance or default
     let interval =
       typeof refreshInterval === "number" && refreshInterval > 0
         ? refreshInterval
         : this._refreshInterval && this._refreshInterval > 0
         ? this._refreshInterval
         : REFRESH_INTERVAL;
-    // Calculate bytes/sec
     speed["down"] = (sumDown - this._lastSum["down"]) / interval;
     speed["up"] = (sumUp - this._lastSum["up"]) / interval;
-
     this._lastSum["down"] = sumDown;
     this._lastSum["up"] = sumUp;
-
     return speed;
   }
 }
