@@ -16,6 +16,10 @@ Show current net speed on Ubuntu panel menu with highly customizable extension.
 --------------------------------
 
 
+## GNOME Version Support
+
+This extension supports GNOME Shell 44-47. The code uses ES6 modules which work natively in GNOME 45+ and are backward compatible with GNOME 44.
+
 
 # Manual Installation
 
@@ -42,14 +46,9 @@ To Uninstall the extension:
 ### Note:
 If GSettings schema isn't available or compatible in your OS then the extension will use default config variables. Settings save won't work.
 
-## Running formatted output tester
-If you want to check the formatted string for the toolbar visibility, run this command:
+## Building for Distribution
 
-$ `node test_extension_eval.js`
-
-```
-⇣0    B/s   ⇡0    B/s 
-⇣1.23 B/s   ⇡12.3 B/s 
-⇣123  B/s   ⇡1.23 KB/s
-⇣1.23 MB/s  ⇡9.88 MB/s
+Exclude test files when packaging:
+```bash
+gnome-extensions pack --extra-source=gsettings-helper.js --extra-source=schemas/
 ```

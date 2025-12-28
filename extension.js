@@ -16,7 +16,6 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-
 import GObject from "gi://GObject";
 import GLib from "gi://GLib";
 import Gio from "gi://Gio";
@@ -24,46 +23,62 @@ import Clutter from "gi://Clutter";
 import St from "gi://St";
 
 // Import GSettings helper
-import * as GSettingsHelper from './gsettings-helper.js';
+import * as GSettingsHelper from "./gsettings-helper.js";
 
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
 import { PopupBaseMenuItem } from "resource:///org/gnome/shell/ui/popupMenu.js";
-import {Extension} from "resource:///org/gnome/shell/extensions/extension.js";
-
+import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 
 // Use bytes per second units
 const SPEED_UNITS = [
-  "B/s", "KB/s", "MB/s", "GB/s", "TB/s", "PB/s", "EB/s", "ZB/s", "YB/s"
+  "B/s",
+  "KB/s",
+  "MB/s",
+  "GB/s",
+  "TB/s",
+  "PB/s",
+  "EB/s",
+  "ZB/s",
+  "YB/s",
 ];
 // Compute unit column width from defined units so unit strings occupy a fixed space
-const UNIT_WIDTH = Math.max(...SPEED_UNITS.map(u => u.length));
+const UNIT_WIDTH = Math.max(...SPEED_UNITS.map((u) => u.length));
 // Default interval. Use decimal refresh interval (e.g., 0.5 seconds)
-const REFRESH_INTERVAL = 1.0; 
+const REFRESH_INTERVAL = 1.0;
 // Choose a fixed width for the amount column (characters).
 // This width should be large enough to hold values like "999.99".
 const BYTES_AMOUNT_WIDTH = 4;
-const DOWN_ARROW_ALTERNATIVES = ['⇣', '↡', '⬇', '↓', '⇓', '⇩', '↧', '⇊'];
-const UP_ARROW_ALTERNATIVES = ['⇡', '↟', '⬆', '↑', '⇑', '⇧', '↥', '⇈'];
-const DEFAULT_DOWN_ARROW = '⇣';
-const DEFAULT_UP_ARROW = '⇡';
-const DEFAULT_DOWNLOAD_COLOR = '#3fd7e5';
-const DEFAULT_UPLOAD_COLOR = '#ffb84d';
-const DEFAULT_FONT_SIZE = 'inherit';
+const DOWN_ARROW_ALTERNATIVES = ["⇣", "↡", "⬇", "↓", "⇓", "⇩", "↧", "⇊"];
+const UP_ARROW_ALTERNATIVES = ["⇡", "↟", "⬆", "↑", "⇑", "⇧", "↥", "⇈"];
+const DEFAULT_DOWN_ARROW = "⇣";
+const DEFAULT_UP_ARROW = "⇡";
+const DEFAULT_DOWNLOAD_COLOR = "#3fd7e5";
+const DEFAULT_UPLOAD_COLOR = "#ffb84d";
+const DEFAULT_FONT_SIZE = "inherit";
 
 // We want arrows and units to stay in fixed positions.
 // Format returns {amount, unit}. We'll left-align the numeric `amount` part
 // by padding it on the right with NBSPs so its width is stable while
 // arrows (on the left) and unit strings (on the right) remain static.
-const NBSP = '\u00A0';
-
+const NBSP = "\u00A0";
 
 // `ifb`: Created by python-based bandwidth manager "traffictoll".
 // `lxdbr`: Created by lxd container manager.
 // Add more virtual interface prefixes here.
 const virtualIfacePrefixes = [
-  "lo", "ifb", "lxdbr", "virbr", "br", "vnet", "tun", "tap", "docker", "utun",
-  "wg", "veth"
+  "lo",
+  "ifb",
+  "lxdbr",
+  "virbr",
+  "br",
+  "vnet",
+  "tun",
+  "tap",
+  "docker",
+  "utun",
+  "wg",
+  "veth",
 ];
 
 const isVirtualIface = (name) => {
@@ -107,8 +122,14 @@ const toSpeedParts = (speed, downArrow, upArrow) => {
   const uArrow = upArrow || DEFAULT_UP_ARROW;
 
   // Build each side: arrow + space + amount (left-aligned in fixed width) + space + unit (right-aligned in fixed width)
-  const downloadText = `${dArrow}${padRight(downParts.amount, BYTES_AMOUNT_WIDTH)}${padRight(downParts.unit, UNIT_WIDTH)}`;
-  const uploadText = `${uArrow}${padRight(upParts.amount, BYTES_AMOUNT_WIDTH)}${padRight(upParts.unit, UNIT_WIDTH)}`;
+  const downloadText = `${dArrow}${padRight(
+    downParts.amount,
+    BYTES_AMOUNT_WIDTH
+  )}${padRight(downParts.unit, UNIT_WIDTH)}`;
+  const uploadText = `${uArrow}${padRight(
+    upParts.amount,
+    BYTES_AMOUNT_WIDTH
+  )}${padRight(upParts.unit, UNIT_WIDTH)}`;
   return { downloadText, uploadText };
 };
 
@@ -127,13 +148,15 @@ const Indicator = GObject.registerClass(
 
       this._signalHandlers = [];
 
-      const defaultLabelStyle = 'font-size: 15px; font-weight: 500; margin-right: 0.5em; align-items: center;';
+      const defaultLabelStyle =
+        "font-size: 15px; font-weight: 500; margin-right: 0.5em; align-items: center;";
       const defaultInputSettings = {
-        text: 'Placeholder',
+        text: "Placeholder",
         can_focus: true,
         x_expand: false,
         track_hover: true,
-        style: 'min-width: 60px; max-width: 80px; padding: 2px 6px; border-radius: 6px; font-size: 14px; background-color: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); color: #ffffff;'
+        style:
+          "min-width: 60px; max-width: 80px; padding: 2px 6px; border-radius: 6px; font-size: 14px; background-color: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); color: #ffffff;",
       };
 
       // Helper to make a row with label and input/button, vertically centered
@@ -142,7 +165,7 @@ const Indicator = GObject.registerClass(
           vertical: false,
           x_align: Clutter.ActorAlign.FILL,
           y_align: Clutter.ActorAlign.CENTER,
-          style: 'spacing: 10px; min-width: 280px;'
+          style: "spacing: 10px; min-width: 280px;",
         });
         label.set_x_align(Clutter.ActorAlign.START);
         label.set_x_expand(true);
@@ -158,11 +181,11 @@ const Indicator = GObject.registerClass(
       this._box = new St.BoxLayout({ vertical: false });
       this._downloadLabel = new St.Label({
         y_align: Clutter.ActorAlign.CENTER,
-        style: this._getLabelStyle('download')
+        style: this._getLabelStyle("download"),
       });
       this._uploadLabel = new St.Label({
         y_align: Clutter.ActorAlign.CENTER,
-        style: this._getLabelStyle('upload')
+        style: this._getLabelStyle("upload"),
       });
       this._box.add_child(this._downloadLabel);
       this._box.add_child(this._uploadLabel);
@@ -173,107 +196,169 @@ const Indicator = GObject.registerClass(
       /*##############  Begin Popup Menu Display  ##############*/
 
       // Refresh interval input Menu Box
-      this._refreshLabel = new St.Label({text: 'Refresh Secs (1.0): ', style: defaultLabelStyle, y_align: Clutter.ActorAlign.CENTER });
+      this._refreshLabel = new St.Label({
+        text: "Refresh Secs (1.0): ",
+        style: defaultLabelStyle,
+        y_align: Clutter.ActorAlign.CENTER,
+      });
       this._refreshEntry = new St.Entry({
         ...defaultInputSettings,
-        text: REFRESH_INTERVAL.toString()
+        text: REFRESH_INTERVAL.toString(),
       });
       let refreshRow = makeInputRow(this._refreshLabel, this._refreshEntry);
-      let menuItem = new PopupBaseMenuItem({ activate: false, can_focus: false, reactive: false });
+      let menuItem = new PopupBaseMenuItem({
+        activate: false,
+        can_focus: false,
+        reactive: false,
+      });
       menuItem.add_child(refreshRow);
       this.menu.addMenuItem(menuItem);
 
       // Color and font size settings Menu Box
-      this._colorFontBox = new St.BoxLayout({ vertical: true, x_align: Clutter.ActorAlign.START });
-      this._downloadColorLabel = new St.Label({ text: 'Download Color (Hex):', style: defaultLabelStyle, y_align: Clutter.ActorAlign.CENTER });
+      this._colorFontBox = new St.BoxLayout({
+        vertical: true,
+        x_align: Clutter.ActorAlign.START,
+      });
+      this._downloadColorLabel = new St.Label({
+        text: "Download Color (Hex):",
+        style: defaultLabelStyle,
+        y_align: Clutter.ActorAlign.CENTER,
+      });
       this._downloadColorEntry = new St.Entry({
         ...defaultInputSettings,
-        text: this._downloadColor.replace('#',''),
-        style: defaultInputSettings.style + `color: #3fd7e5 !important;`
+        text: this._downloadColor.replace("#", ""),
+        style: defaultInputSettings.style + `color: #3fd7e5 !important;`,
       });
-      this._uploadColorLabel = new St.Label({ text: 'Upload Color (Hex):', style: defaultLabelStyle, y_align: Clutter.ActorAlign.CENTER });
+      this._uploadColorLabel = new St.Label({
+        text: "Upload Color (Hex):",
+        style: defaultLabelStyle,
+        y_align: Clutter.ActorAlign.CENTER,
+      });
       this._uploadColorEntry = new St.Entry({
         ...defaultInputSettings,
-        text: this._uploadColor.replace('#',''),
-        style: defaultInputSettings.style + `color: #ffb84d !important;`
+        text: this._uploadColor.replace("#", ""),
+        style: defaultInputSettings.style + `color: #ffb84d !important;`,
       });
-      this._fontSizeLabel = new St.Label({ text: 'Font Size (px|em|pt|%):', style: defaultLabelStyle, y_align: Clutter.ActorAlign.CENTER });
+      this._fontSizeLabel = new St.Label({
+        text: "Font Size (px|em|pt|%):",
+        style: defaultLabelStyle,
+        y_align: Clutter.ActorAlign.CENTER,
+      });
       this._fontSizeEntry = new St.Entry({
         ...defaultInputSettings,
-        text: this._fontSize
+        text: this._fontSize,
       });
-      
+
       // Combined arrow selection button
-      this._arrowLabel = new St.Label({ text: `Change Icons (1-${DOWN_ARROW_ALTERNATIVES.length}):`, style: defaultLabelStyle, y_align: Clutter.ActorAlign.CENTER });
+      this._arrowLabel = new St.Label({
+        text: `Change Icons (1-${DOWN_ARROW_ALTERNATIVES.length}):`,
+        style: defaultLabelStyle,
+        y_align: Clutter.ActorAlign.CENTER,
+      });
       this._arrowIndex = 0;
       // Find initial index based on down arrow
       const initialIndex = DOWN_ARROW_ALTERNATIVES.indexOf(this._downArrow);
       if (initialIndex !== -1) this._arrowIndex = initialIndex;
-      
+
       this._arrowButton = new St.Button({
-        label: `${this._arrowIndex + 1}) ${this._downArrow}  -  ${this._upArrow}`,
-        style_class: 'button',
+        label: `${this._arrowIndex + 1}) ${this._downArrow}  -  ${
+          this._upArrow
+        }`,
+        style_class: "button",
         can_focus: true,
         track_hover: true,
-        style: 'min-width: 100px; padding: 4px 12px; border-radius: 6px; font-size: 16px; background-color: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); color: #ffffff;'
+        style:
+          "min-width: 100px; padding: 4px 12px; border-radius: 6px; font-size: 16px; background-color: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); color: #ffffff;",
       });
-      
-      this._colorFontBox.add_child(makeInputRow(this._downloadColorLabel, this._downloadColorEntry));
-      this._colorFontBox.add_child(makeInputRow(this._uploadColorLabel, this._uploadColorEntry));
-      this._colorFontBox.add_child(makeInputRow(this._fontSizeLabel, this._fontSizeEntry));
-      this._colorFontBox.add_child(makeInputRow(this._arrowLabel, this._arrowButton));
-      let colorFontMenuItem = new PopupBaseMenuItem({ activate: false, can_focus: false, reactive: false });
+
+      this._colorFontBox.add_child(
+        makeInputRow(this._downloadColorLabel, this._downloadColorEntry)
+      );
+      this._colorFontBox.add_child(
+        makeInputRow(this._uploadColorLabel, this._uploadColorEntry)
+      );
+      this._colorFontBox.add_child(
+        makeInputRow(this._fontSizeLabel, this._fontSizeEntry)
+      );
+      this._colorFontBox.add_child(
+        makeInputRow(this._arrowLabel, this._arrowButton)
+      );
+      let colorFontMenuItem = new PopupBaseMenuItem({
+        activate: false,
+        can_focus: false,
+        reactive: false,
+      });
       colorFontMenuItem.add_child(this._colorFontBox);
       this.menu.addMenuItem(colorFontMenuItem);
 
       /*##############  End Popup Menu Display  ##############*/
 
       // Set initial net speed to 0
-      const { downloadText, uploadText } = toSpeedParts({ down: 0, up: 0 }, this._downArrow, this._upArrow);
+      const { downloadText, uploadText } = toSpeedParts(
+        { down: 0, up: 0 },
+        this._downArrow,
+        this._upArrow
+      );
       this._downloadLabel.set_text(downloadText);
       this._uploadLabel.set_text(uploadText);
 
       // Handlers for color/font size changes
       const updateColorsAndFont = () => {
         // Prevent running if destroyed
-        if (!this._downloadColorEntry || this._downloadColorEntry.destroyed ||
-            !this._uploadColorEntry || this._uploadColorEntry.destroyed ||
-            !this._fontSizeEntry || this._fontSizeEntry.destroyed)
+        if (
+          !this._downloadColorEntry ||
+          this._downloadColorEntry.destroyed ||
+          !this._uploadColorEntry ||
+          this._uploadColorEntry.destroyed ||
+          !this._fontSizeEntry ||
+          this._fontSizeEntry.destroyed
+        )
           return;
-        let dColor = this._downloadColorEntry.get_text().trim().replace(/^#/, '');
-        let uColor = this._uploadColorEntry.get_text().trim().replace(/^#/, '');
+        let dColor = this._downloadColorEntry
+          .get_text()
+          .trim()
+          .replace(/^#/, "");
+        let uColor = this._uploadColorEntry.get_text().trim().replace(/^#/, "");
         let fSize = this._fontSizeEntry.get_text().trim().toLowerCase();
         if (/^[0-9a-fA-F]{6}$/.test(dColor)) {
-          this._downloadColor = '#' + dColor;
-          this._downloadColorEntry.set_style(this._getEntryStyle(this._downloadColor));
+          this._downloadColor = "#" + dColor;
+          this._downloadColorEntry.set_style(
+            this._getEntryStyle(this._downloadColor)
+          );
         }
         if (/^[0-9a-fA-F]{6}$/.test(uColor)) {
-          this._uploadColor = '#' + uColor;
-          this._uploadColorEntry.set_style(this._getEntryStyle(this._uploadColor));
+          this._uploadColor = "#" + uColor;
+          this._uploadColorEntry.set_style(
+            this._getEntryStyle(this._uploadColor)
+          );
         }
         // Accept 'inherit', or a number (treated as px), or a valid CSS size
-        if (fSize === '' || fSize === 'inherit') {
-          this._fontSize = 'inherit';
+        if (fSize === "" || fSize === "inherit") {
+          this._fontSize = "inherit";
         } else if (/^[0-9]+$/.test(fSize)) {
-          this._fontSize = fSize + 'px';
+          this._fontSize = fSize + "px";
         } else if (/^[0-9]+(px|em|pt|%)$/.test(fSize)) {
           this._fontSize = fSize;
         } // else ignore invalid
         // Now update label styles and notify
         if (this._downloadLabel && !this._downloadLabel.destroyed)
-          this._updateLabelStyles(this._downloadLabel, this._getLabelStyle('download'));
+          this._updateLabelStyles(
+            this._downloadLabel,
+            this._getLabelStyle("download")
+          );
         if (this._uploadLabel && !this._uploadLabel.destroyed)
-          this._updateLabelStyles(this._uploadLabel, this._getLabelStyle('upload'));
-        if (this._onColorFontChanged)
-          this._onColorFontChanged();
+          this._updateLabelStyles(
+            this._uploadLabel,
+            this._getLabelStyle("upload")
+          );
+        if (this._onColorFontChanged) this._onColorFontChanged();
         if (global.stage) global.stage.set_key_focus(null);
       };
 
       // Handler for refresh interval changes
       const updateRefreshInterval = () => {
         // Prevent running if destroyed
-        if (!this._refreshEntry || this._refreshEntry.destroyed)
-          return;
+        if (!this._refreshEntry || this._refreshEntry.destroyed) return;
         let val = parseFloat(this._refreshEntry.get_text().trim());
         if (isNaN(val) || val <= 0) {
           // fallback to default if invalid
@@ -284,33 +369,73 @@ const Indicator = GObject.registerClass(
       };
 
       // Connect signals and track all in _signalHandlers for cleanup
-      this._connectSignal(this._downloadColorEntry.get_clutter_text(), 'activate', updateColorsAndFont);
-      this._connectSignal(this._downloadColorEntry.get_clutter_text(), 'key-focus-out', (actor) => { updateColorsAndFont(); return Clutter.EVENT_PROPAGATE; });
-      this._connectSignal(this._uploadColorEntry.get_clutter_text(), 'activate', updateColorsAndFont);
-      this._connectSignal(this._uploadColorEntry.get_clutter_text(), 'key-focus-out', (actor) => { updateColorsAndFont(); return Clutter.EVENT_PROPAGATE; });
-      this._connectSignal(this._fontSizeEntry.get_clutter_text(), 'activate', updateColorsAndFont);
-      this._connectSignal(this._fontSizeEntry.get_clutter_text(), 'key-focus-out', (actor) => { updateColorsAndFont(); return Clutter.EVENT_PROPAGATE; });
-      
+      this._connectSignal(
+        this._downloadColorEntry.get_clutter_text(),
+        "activate",
+        updateColorsAndFont
+      );
+      this._connectSignal(
+        this._downloadColorEntry.get_clutter_text(),
+        "key-focus-out",
+        (actor) => {
+          updateColorsAndFont();
+          return Clutter.EVENT_PROPAGATE;
+        }
+      );
+      this._connectSignal(
+        this._uploadColorEntry.get_clutter_text(),
+        "activate",
+        updateColorsAndFont
+      );
+      this._connectSignal(
+        this._uploadColorEntry.get_clutter_text(),
+        "key-focus-out",
+        (actor) => {
+          updateColorsAndFont();
+          return Clutter.EVENT_PROPAGATE;
+        }
+      );
+      this._connectSignal(
+        this._fontSizeEntry.get_clutter_text(),
+        "activate",
+        updateColorsAndFont
+      );
+      this._connectSignal(
+        this._fontSizeEntry.get_clutter_text(),
+        "key-focus-out",
+        (actor) => {
+          updateColorsAndFont();
+          return Clutter.EVENT_PROPAGATE;
+        }
+      );
+
       // Combined arrow button click handler - cycle through arrow pairs
-      this._connectSignal(this._arrowButton, 'clicked', () => {
-        this._arrowIndex = (this._arrowIndex + 1) % DOWN_ARROW_ALTERNATIVES.length;
+      this._connectSignal(this._arrowButton, "clicked", () => {
+        this._arrowIndex =
+          (this._arrowIndex + 1) % DOWN_ARROW_ALTERNATIVES.length;
         this._downArrow = DOWN_ARROW_ALTERNATIVES[this._arrowIndex];
         this._upArrow = UP_ARROW_ALTERNATIVES[this._arrowIndex];
-        this._arrowButton.set_label(`${this._arrowIndex + 1}) ${this._downArrow}  -  ${this._upArrow}`);
+        this._arrowButton.set_label(
+          `${this._arrowIndex + 1}) ${this._downArrow}  -  ${this._upArrow}`
+        );
         if (this._onColorFontChanged) this._onColorFontChanged();
       });
-      
-      this._connectSignal(this._refreshEntry.get_clutter_text(), 'activate', updateRefreshInterval);
-      this._connectSignal(this._refreshEntry.get_clutter_text(), 'notify::text', () => {
-        if (this._refreshTimeoutId) GLib.source_remove(this._refreshTimeoutId);
-        this._refreshTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+
+      this._connectSignal(
+        this._refreshEntry.get_clutter_text(),
+        "activate",
+        updateRefreshInterval
+      );
+      this._connectSignal(
+        this._refreshEntry.get_clutter_text(),
+        "key-focus-out",
+        (actor) => {
           updateRefreshInterval();
-          this._refreshTimeoutId = null;
-          return GLib.SOURCE_REMOVE;
-        });
-      });
+          return Clutter.EVENT_PROPAGATE;
+        }
+      );
       if (this.menu && this.menu.actor) {
-        this._connectSignal(this.menu.actor, 'button-press-event', () => {
+        this._connectSignal(this.menu.actor, "button-press-event", () => {
           global.stage.set_key_focus(null);
           return Clutter.EVENT_PROPAGATE;
         });
@@ -339,7 +464,14 @@ const Indicator = GObject.registerClass(
       // Disconnect all signal handlers
       this._disconnectAllSignals();
       // Destroy child widgets
-      [this._downloadColorEntry, this._uploadColorEntry, this._fontSizeEntry, this._arrowButton, this._downloadLabel, this._uploadLabel].forEach(w => {
+      [
+        this._downloadColorEntry,
+        this._uploadColorEntry,
+        this._fontSizeEntry,
+        this._arrowButton,
+        this._downloadLabel,
+        this._uploadLabel,
+      ].forEach((w) => {
         if (w && w.destroy) w.destroy();
       });
       super.destroy();
@@ -350,9 +482,10 @@ const Indicator = GObject.registerClass(
     }
 
     _getLabelStyle(which) {
-      let color = which === 'download' ? this._downloadColor : this._uploadColor;
+      let color =
+        which === "download" ? this._downloadColor : this._uploadColor;
       let fontSize = this._fontSize;
-      let margin = which === 'upload' ? 'margin-left: 10px;' : '';
+      let margin = which === "upload" ? "margin-left: 10px;" : "";
       return `font-family: monospace; font-weight: 500; font-size: ${fontSize}; ${margin} color: ${color};`;
     }
 
@@ -361,8 +494,7 @@ const Indicator = GObject.registerClass(
       label.set_style(style);
       label.queue_relayout();
       label.queue_redraw();
-    }
-
+    };
 
     setText({ downloadText, uploadText }) {
       this._downloadLabel.set_text(downloadText);
@@ -381,38 +513,50 @@ const Indicator = GObject.registerClass(
       this._onColorFontChanged = cb;
     }
 
-    setColorFontSettings({ downloadColor, uploadColor, fontSize, downArrow, upArrow }) {
+    setColorFontSettings({
+      downloadColor,
+      uploadColor,
+      fontSize,
+      downArrow,
+      upArrow,
+    }) {
       this._downloadColor = downloadColor || DEFAULT_DOWNLOAD_COLOR;
       this._uploadColor = uploadColor || DEFAULT_UPLOAD_COLOR;
       this._fontSize = fontSize || DEFAULT_FONT_SIZE;
       this._downArrow = downArrow || DEFAULT_DOWN_ARROW;
       this._upArrow = upArrow || DEFAULT_UP_ARROW;
-      
+
       // Update arrow index
       this._arrowIndex = DOWN_ARROW_ALTERNATIVES.indexOf(this._downArrow);
       if (this._arrowIndex === -1) this._arrowIndex = 0;
-      
-      this._downloadColorEntry.set_text(this._downloadColor.replace('#',''));
-      this._downloadColorEntry.set_style(this._getEntryStyle(this._downloadColor));
-      this._uploadColorEntry.set_text(this._uploadColor.replace('#',''));
+
+      this._downloadColorEntry.set_text(this._downloadColor.replace("#", ""));
+      this._downloadColorEntry.set_style(
+        this._getEntryStyle(this._downloadColor)
+      );
+      this._uploadColorEntry.set_text(this._uploadColor.replace("#", ""));
       this._uploadColorEntry.set_style(this._getEntryStyle(this._uploadColor));
       this._fontSizeEntry.set_text(this._fontSize);
       this._fontSizeEntry.set_style(this._getEntryStyle("#ffffff"));
-      this._arrowButton.set_label(`${this._arrowIndex + 1}:  ${this._downArrow}  -  ${this._upArrow}`);
-      this._downloadLabel.set_style(this._getLabelStyle('download'));
+      this._arrowButton.set_label(
+        `${this._arrowIndex + 1}:  ${this._downArrow}  -  ${this._upArrow}`
+      );
+      this._downloadLabel.set_style(this._getLabelStyle("download"));
       this._downloadLabel.queue_relayout();
       this._downloadLabel.queue_redraw();
-      this._uploadLabel.set_style(this._getLabelStyle('upload'));
+      this._uploadLabel.set_style(this._getLabelStyle("upload"));
       this._uploadLabel.queue_relayout();
       this._uploadLabel.queue_redraw();
     }
 
     setRefreshInterval(val) {
-      if (typeof val !== 'number' || isNaN(val) || val <= 0) val = REFRESH_INTERVAL;
+      if (typeof val !== "number" || isNaN(val) || val <= 0)
+        val = REFRESH_INTERVAL;
       this._refreshInterval = val;
       this._refreshEntry.set_text(val.toString());
     }
-  });
+  }
+);
 
 export default class NetSpeedCustom extends Extension {
   constructor(metadata) {
@@ -420,20 +564,33 @@ export default class NetSpeedCustom extends Extension {
 
     this._metadata = metadata;
     this._uuid = metadata.uuid;
+    this._settings = null;
   }
-
 
   _loadSettings() {
     // Try to use GSettings for persistence, fall back to defaults
-    try {
-      this._refreshInterval = GSettingsHelper.getDouble('refresh-interval') || REFRESH_INTERVAL;
-      this._downloadColor = GSettingsHelper.getString('download-color') || DEFAULT_DOWNLOAD_COLOR;
-      this._uploadColor = GSettingsHelper.getString('upload-color') || DEFAULT_UPLOAD_COLOR;
-      this._fontSize = GSettingsHelper.getString('font-size') || DEFAULT_FONT_SIZE;
-      this._downArrow = GSettingsHelper.getString('down-arrow') || DEFAULT_DOWN_ARROW;
-      this._upArrow = GSettingsHelper.getString('up-arrow') || DEFAULT_UP_ARROW;
-    } catch (e) {
-      console.warn('Failed to load settings, using defaults: ' + e);
+    this._settings = GSettingsHelper.createSettings(this);
+
+    if (this._settings) {
+      this._refreshInterval =
+        GSettingsHelper.readDouble(this._settings, "refresh-interval") ||
+        REFRESH_INTERVAL;
+      this._downloadColor =
+        GSettingsHelper.readString(this._settings, "download-color") ||
+        DEFAULT_DOWNLOAD_COLOR;
+      this._uploadColor =
+        GSettingsHelper.readString(this._settings, "upload-color") ||
+        DEFAULT_UPLOAD_COLOR;
+      this._fontSize =
+        GSettingsHelper.readString(this._settings, "font-size") ||
+        DEFAULT_FONT_SIZE;
+      this._downArrow =
+        GSettingsHelper.readString(this._settings, "down-arrow") ||
+        DEFAULT_DOWN_ARROW;
+      this._upArrow =
+        GSettingsHelper.readString(this._settings, "up-arrow") ||
+        DEFAULT_UP_ARROW;
+    } else {
       this._refreshInterval = REFRESH_INTERVAL;
       this._downloadColor = DEFAULT_DOWNLOAD_COLOR;
       this._uploadColor = DEFAULT_UPLOAD_COLOR;
@@ -445,32 +602,46 @@ export default class NetSpeedCustom extends Extension {
 
   _saveSettings() {
     // Only save if GSettings is available
-    if (!GSettingsHelper.isAvailable()) {
+    if (!this._settings) {
       return;
     }
-    try {
-      GSettingsHelper.setDouble('refresh-interval', this._indicator?._refreshInterval || this._refreshInterval);
-      GSettingsHelper.setString('download-color', this._indicator?._downloadColor || this._downloadColor);
-      GSettingsHelper.setString('upload-color', this._indicator?._uploadColor || this._uploadColor);
-      GSettingsHelper.setString('font-size', this._indicator?._fontSize || this._fontSize);
-      GSettingsHelper.setString('down-arrow', this._indicator?._downArrow || this._downArrow);
-      GSettingsHelper.setString('up-arrow', this._indicator?._upArrow || this._upArrow);
-    } catch (e) {
-      console.warn('Failed to save settings: ' + e);
-    }
+
+    GSettingsHelper.writeDouble(
+      this._settings,
+      "refresh-interval",
+      this._indicator?._refreshInterval || this._refreshInterval
+    );
+    GSettingsHelper.writeString(
+      this._settings,
+      "download-color",
+      this._indicator?._downloadColor || this._downloadColor
+    );
+    GSettingsHelper.writeString(
+      this._settings,
+      "upload-color",
+      this._indicator?._uploadColor || this._uploadColor
+    );
+    GSettingsHelper.writeString(
+      this._settings,
+      "font-size",
+      this._indicator?._fontSize || this._fontSize
+    );
+    GSettingsHelper.writeString(
+      this._settings,
+      "down-arrow",
+      this._indicator?._downArrow || this._downArrow
+    );
+    GSettingsHelper.writeString(
+      this._settings,
+      "up-arrow",
+      this._indicator?._upArrow || this._upArrow
+    );
   }
 
   enable() {
-    // Initialize GSettings helper with extension object
-    try {
-      GSettingsHelper.init(this);
-    } catch (e) {
-      console.warn('GSettings initialization failed, extension will use defaults: ' + e);
-    }
-    
     // No external stylesheet needed; colors are set inline.
     this._textDecoder = new TextDecoder();
-    this._lastSum = {"down": 0, "up": 0};
+    this._lastSum = { down: 0, up: 0 };
     this._lastTime = GLib.get_monotonic_time() / 1e6; // seconds
     this._timeout = null;
 
@@ -479,13 +650,19 @@ export default class NetSpeedCustom extends Extension {
 
     this._indicator = new Indicator();
     // If refresh interval/color/font/arrow settings loaded, apply to indicator
-    if (this._downloadColor || this._uploadColor || this._fontSize || this._downArrow || this._upArrow) {
+    if (
+      this._downloadColor ||
+      this._uploadColor ||
+      this._fontSize ||
+      this._downArrow ||
+      this._upArrow
+    ) {
       this._indicator.setColorFontSettings({
         downloadColor: this._downloadColor,
         uploadColor: this._uploadColor,
         fontSize: this._fontSize,
         downArrow: this._downArrow,
-        upArrow: this._upArrow
+        upArrow: this._upArrow,
       });
     }
     if (this._refreshInterval) {
@@ -513,9 +690,14 @@ export default class NetSpeedCustom extends Extension {
       this._timeout = null;
     }
     this._lastTime = GLib.get_monotonic_time() / 1e6;
-    const interval = (this._refreshInterval && this._refreshInterval > 0) ? this._refreshInterval : REFRESH_INTERVAL;
+    const interval =
+      this._refreshInterval && this._refreshInterval > 0
+        ? this._refreshInterval
+        : REFRESH_INTERVAL;
     this._timeout = GLib.timeout_add(
-      GLib.PRIORITY_DEFAULT, Math.round(interval * 1000), () => {
+      GLib.PRIORITY_DEFAULT,
+      Math.round(interval * 1000),
+      () => {
         const now = GLib.get_monotonic_time() / 1e6;
         const elapsed = now - this._lastTime;
         this._lastTime = now;
@@ -539,22 +721,27 @@ export default class NetSpeedCustom extends Extension {
   }
 
   disable() {
-    // No external stylesheet to unload.
-    if (this._indicator != null) {
-      this._indicator.destroy();
-      this._indicator = null;
-    }
-    this._textDecoder = null;
-    this._lastSum = null;
-    this._lastTime = null;
+    // Remove main loop source
     if (this._timeout != null) {
       GLib.source_remove(this._timeout);
       this._timeout = null;
     }
+
+    // Destroy all objects
+    if (this._indicator != null) {
+      this._indicator.destroy();
+      this._indicator = null;
+    }
+
+    // Clear all references
+    this._textDecoder = null;
+    this._lastSum = null;
+    this._lastTime = null;
+    this._settings = null;
   }
 
   getCurrentNetSpeed(refreshInterval) {
-    const speed = {"down": 0, "up": 0};
+    const speed = { down: 0, up: 0 };
 
     const inputFile = Gio.File.new_for_path("/proc/net/dev");
     const [, content] = inputFile.load_contents(null);
@@ -585,9 +772,12 @@ export default class NetSpeedCustom extends Extension {
     }
 
     // Use the passed refreshInterval, or fallback to instance or default
-    let interval = (typeof refreshInterval === 'number' && refreshInterval > 0)
-      ? refreshInterval
-      : (this._refreshInterval && this._refreshInterval > 0 ? this._refreshInterval : REFRESH_INTERVAL);
+    let interval =
+      typeof refreshInterval === "number" && refreshInterval > 0
+        ? refreshInterval
+        : this._refreshInterval && this._refreshInterval > 0
+        ? this._refreshInterval
+        : REFRESH_INTERVAL;
     // Calculate bytes/sec
     speed["down"] = (sumDown - this._lastSum["down"]) / interval;
     speed["up"] = (sumUp - this._lastSum["up"]) / interval;
@@ -597,8 +787,4 @@ export default class NetSpeedCustom extends Extension {
 
     return speed;
   }
-};
-
-
-// Named export for testing purposes (keeps main GNOME export intact)
-export { toSpeedParts };
+}
