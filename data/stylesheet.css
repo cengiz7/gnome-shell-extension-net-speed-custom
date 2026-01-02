@@ -1,0 +1,53 @@
+/* Net Speed Custom Extension Stylesheet */
+
+.net-speed-label {
+  font-family: monospace;
+  font-weight: 500;
+}
+
+.net-speed-download {
+  color: #3fd7e5;
+}
+
+.net-speed-upload {
+  color: #ffb84d;
+  margin-left: 10px;
+}
+
+.net-speed-menu-label {
+  font-size: 15px;
+  font-weight: 500;
+  margin-right: 0.5em;
+}
+
+.net-speed-input-row {
+  spacing: 10px;
+  min-width: 280px;
+}
+
+.net-speed-input-entry {
+  min-width: 60px;
+  max-width: 80px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.net-speed-color-entry-download {
+  color: #3fd7e5 !important;
+}
+
+.net-speed-color-entry-upload {
+  color: #ffb84d !important;
+}
+
+.net-speed-input-entry.button {
+  min-width: 100px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
