@@ -3,6 +3,6 @@
   "description": "Show current network speed/activity on Ubuntu panel menu. Customize colors, font size, arrows, and more.",
   "uuid": "net-speed-custom@cengiz7.github.io",
   "url": "https://github.com/cengiz7/gnome-shell-extension-net-speed-custom",
-  "version": 1,
+  "version": 2,
   "shell-version": ["45", "46", "47", "48", "49"]
 }
