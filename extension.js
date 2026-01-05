@@ -654,6 +654,7 @@ export default class NetSpeedCustom extends Extension {
     this._lastSum = { down: 0, up: 0 };
     this._lastTime = GLib.get_monotonic_time() / 1e6;
     this._timeout = null;
+    this._cancellable = new Gio.Cancellable();
     this._loadSettings();
     this._indicator = new Indicator();
     if (
@@ -707,12 +708,15 @@ export default class NetSpeedCustom extends Extension {
         const now = GLib.get_monotonic_time() / 1e6;
         const elapsed = now - this._lastTime;
         this._lastTime = now;
-        
+
         const inputFile = Gio.File.new_for_path("/proc/net/dev");
-        inputFile.load_contents_async(null, (file, result) => {
+        inputFile.load_contents_async(this._cancellable, (file, result) => {
           try {
             const [, content] = file.load_contents_finish(result);
-            const speed = this.getCurrentNetSpeed(elapsed > 0 ? elapsed : interval, content);
+            const speed = this.getCurrentNetSpeed(
+              elapsed > 0 ? elapsed : interval,
+              content
+            );
             const arrows = this._indicator.getArrows();
             const parts = toSpeedParts(speed, arrows.downArrow, arrows.upArrow);
             this._indicator.setText(parts);
@@ -746,6 +750,10 @@ export default class NetSpeedCustom extends Extension {
     if (this._timeout != null) {
       GLib.source_remove(this._timeout);
       this._timeout = null;
+    }
+    if (this._cancellable != null) {
+      this._cancellable.cancel();
+      this._cancellable = null;
     }
     if (this._indicator != null) {
       this._indicator.destroy();
