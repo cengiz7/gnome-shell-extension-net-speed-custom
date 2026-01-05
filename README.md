@@ -16,11 +16,6 @@ Show current net speed on Ubuntu panel menu with highly customizable and lightwe
 --------------------------------
 
 
-## GNOME Version Support
-
-This extension supports GNOME Shell 45+. The code uses ES6 modules which work natively in GNOME 45+
-
-
 # Manual Installation
 
 1. Copy the extension to extensions folder:  
@@ -50,5 +45,5 @@ If GSettings schema isn't available or compatible in your OS then the extension 
 
 Exclude test files when packaging:
 ```bash
-gnome-extensions pack --extra-source=data/ --extra-source=schemas/ --extra-source=README.md
+gnome-extensions pack --extra-source=stylesheet.css --extra-source=schemas/ --extra-source=README.md
 ```

@@ -690,17 +690,6 @@ export default class NetSpeedCustom extends Extension {
    * Called when the extension is enabled.
    */
   enable() {
-    // Load stylesheet
-    const stylesheetPath = this.dir
-      .get_child("data")
-      .get_child("stylesheet.css")
-      .get_path();
-    const stylesheetFile = Gio.File.new_for_path(stylesheetPath);
-    if (stylesheetFile.query_exists(null)) {
-      const theme = St.ThemeContext.get_for_stage(global.stage).get_theme();
-      theme.load_stylesheet(stylesheetFile);
-    }
-
     this._textDecoder = new TextDecoder();
     this._lastSum = { down: 0, up: 0 };
     this._lastTime = GLib.get_monotonic_time() / 1e6;
@@ -758,11 +747,21 @@ export default class NetSpeedCustom extends Extension {
         const now = GLib.get_monotonic_time() / 1e6;
         const elapsed = now - this._lastTime;
         this._lastTime = now;
-        const speed = this.getCurrentNetSpeed(elapsed > 0 ? elapsed : interval);
-        const arrows = this._indicator.getArrows();
-        const parts = toSpeedParts(speed, arrows.downArrow, arrows.upArrow);
-        this._indicator.setText(parts);
-        this._restartTimeout();
+        
+        const inputFile = Gio.File.new_for_path("/proc/net/dev");
+        inputFile.load_contents_async(null, (file, result) => {
+          try {
+            const [, content] = file.load_contents_finish(result);
+            const speed = this.getCurrentNetSpeed(elapsed > 0 ? elapsed : interval, content);
+            const arrows = this._indicator.getArrows();
+            const parts = toSpeedParts(speed, arrows.downArrow, arrows.upArrow);
+            this._indicator.setText(parts);
+            this._restartTimeout();
+          } catch (e) {
+            console.error(`Failed to read net speed: ${e}`);
+            this._restartTimeout();
+          }
+        });
         return GLib.SOURCE_REMOVE;
       }
     );
@@ -801,12 +800,11 @@ export default class NetSpeedCustom extends Extension {
   /**
    * Get current network speed.
    * @param {number} refreshInterval - Interval in seconds
+   * @param {Uint8Array} content - File content from async read
    * @returns {{down: number, up: number}} Bytes per second
    */
-  getCurrentNetSpeed(refreshInterval) {
+  getCurrentNetSpeed(refreshInterval, content) {
     const speed = { down: 0, up: 0 };
-    const inputFile = Gio.File.new_for_path("/proc/net/dev");
-    const [, content] = inputFile.load_contents(null);
     const lines = this._textDecoder.decode(content).split("\n");
     let sumDown = 0;
     let sumUp = 0;
