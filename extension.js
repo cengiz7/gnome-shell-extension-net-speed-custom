@@ -78,46 +78,6 @@ const virtualIfacePrefixes = [
   "veth",
 ];
 
-const SCHEMA_ID = "org.gnome.shell.extensions.net-speed-custom";
-
-// Helper functions for settings (replacing gsettings-helper.js)
-function createSettings(extension) {
-  const GioSSS = Gio.SettingsSchemaSource;
-  let schemaSource = GioSSS.get_default();
-  let schemaObj = null;
-
-  if (schemaSource) {
-    schemaObj = schemaSource.lookup(SCHEMA_ID, true);
-  }
-
-  if (!schemaObj && extension) {
-    try {
-      const schemaDir = extension.dir.get_child("schemas").get_path();
-      const customSource = GioSSS.new_from_directory(
-        schemaDir,
-        schemaSource,
-        false
-      );
-      schemaObj = customSource.lookup(SCHEMA_ID, true);
-    } catch (e) {
-      console.warn(`Schema ${SCHEMA_ID} lookup failed: ${e}`);
-      return null;
-    }
-  }
-
-  if (!schemaObj) {
-    console.warn(`Schema ${SCHEMA_ID} not found`);
-    return null;
-  }
-
-  try {
-    return new Gio.Settings({ settings_schema: schemaObj });
-  } catch (e) {
-    console.warn(`Settings creation failed: ${e}`);
-    return null;
-  }
-}
-
 const isVirtualIface = (name) => {
   return virtualIfacePrefixes.some((prefix) => {
     return name.startsWith(prefix);
@@ -631,7 +591,7 @@ export default class NetSpeedCustom extends Extension {
    * @private
    */
   _loadSettings() {
-    this._settings = createSettings(this);
+    this._settings = this.getSettings();
     if (this._settings) {
       this._refreshInterval =
         this._settings.get_double("refresh-interval") || REFRESH_INTERVAL;
