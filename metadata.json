@@ -4,6 +4,6 @@
   "uuid": "net-speed-custom@cengiz7.github.io",
   "url": "https://github.com/cengiz7/gnome-shell-extension-net-speed-custom",
   "settings-schema": "org.gnome.shell.extensions.net-speed-custom",
-  "version": 3,
+  "version": 4,
   "shell-version": ["45", "46", "47", "48", "49"]
 }
