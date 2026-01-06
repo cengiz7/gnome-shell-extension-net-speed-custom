@@ -46,8 +46,8 @@ const REFRESH_INTERVAL = 1.0;
 // Choose a fixed width for the amount column (characters).
 // This width should be large enough to hold values like "999.99".
 const BYTES_AMOUNT_WIDTH = 4;
-const DOWN_ARROW_ALTERNATIVES = ["⇣", "↡", "⬇", "↓", "⇓", "⇩", "↧", "⇊"];
-const UP_ARROW_ALTERNATIVES = ["⇡", "↟", "⬆", "↑", "⇑", "⇧", "↥", "⇈"];
+const DOWN_ARROW_ALTERNATIVES = ["⇣", "↡", "⬇", "↓", "⇓", "⇩", "↧", "⇊", "▼"];
+const UP_ARROW_ALTERNATIVES = ["⇡", "↟", "⬆", "↑", "⇑", "⇧", "↥", "⇈", "▲"];
 const DEFAULT_DOWN_ARROW = "⇣";
 const DEFAULT_UP_ARROW = "⇡";
 const DEFAULT_DOWNLOAD_COLOR = "#3fd7e5";
@@ -119,11 +119,11 @@ const toSpeedParts = (speed, downArrow, upArrow) => {
   const uArrow = upArrow || DEFAULT_UP_ARROW;
 
   // Build each side: arrow + space + amount (left-aligned in fixed width) + space + unit (right-aligned in fixed width)
-  const downloadText = `${dArrow}${padRight(
+  const downloadText = `${dArrow}${NBSP}${padRight(
     downParts.amount,
     BYTES_AMOUNT_WIDTH
   )}${padRight(downParts.unit, UNIT_WIDTH)}`;
-  const uploadText = `${uArrow}${padRight(
+  const uploadText = `${uArrow}${NBSP}${padRight(
     upParts.amount,
     BYTES_AMOUNT_WIDTH
   )}${padRight(upParts.unit, UNIT_WIDTH)}`;
@@ -150,6 +150,23 @@ const Indicator = GObject.registerClass(
       this._upArrow = DEFAULT_UP_ARROW;
 
       this._signalHandlers = [];
+
+      this.menu.actor.add_style_class_name("net-speed-menu");
+
+      // Add theme variant class for dark/light mode support
+      const interfaceSettings = new Gio.Settings({
+        schema: "org.gnome.desktop.interface",
+      });
+      const colorScheme = interfaceSettings.get_string("color-scheme");
+      let initialVariant = "light";
+      if (colorScheme === "prefer-dark") initialVariant = "dark";
+      this._updateThemeVariant(initialVariant);
+      this._connectSignal(interfaceSettings, "changed::color-scheme", () => {
+        const newScheme = interfaceSettings.get_string("color-scheme");
+        let newVariant = "light";
+        if (newScheme === "prefer-dark") newVariant = "dark";
+        this._updateThemeVariant(newVariant);
+      });
 
       const defaultInputSettings = {
         text: "Placeholder",
@@ -206,19 +223,13 @@ const Indicator = GObject.registerClass(
         text: REFRESH_INTERVAL.toString(),
       });
       let refreshRow = makeInputRow(this._refreshLabel, this._refreshEntry);
-      let menuItem = new PopupBaseMenuItem({
-        activate: false,
-        can_focus: false,
-        reactive: false,
-      });
-      menuItem.add_child(refreshRow);
-      this.menu.addMenuItem(menuItem);
 
       // Color and font size settings Menu Box
       this._colorFontBox = new St.BoxLayout({
         vertical: true,
         x_align: Clutter.ActorAlign.START,
       });
+      this._colorFontBox.add_child(refreshRow);
       this._downloadColorLabel = new St.Label({
         text: "Download Color (Hex):",
         style_class: "net-speed-menu-label",
@@ -226,7 +237,7 @@ const Indicator = GObject.registerClass(
       });
       this._downloadColorEntry = new St.Entry({
         ...defaultInputSettings,
-        text: this._downloadColor.replace("#", ""),
+        text: this._colorCodeSymbolized(this._downloadColor),
       });
       this._downloadColorEntry.add_style_class_name(
         "net-speed-color-entry-download"
@@ -238,7 +249,7 @@ const Indicator = GObject.registerClass(
       });
       this._uploadColorEntry = new St.Entry({
         ...defaultInputSettings,
-        text: this._uploadColor.replace("#", ""),
+        text: this._colorCodeSymbolized(this._uploadColor),
       });
       this._uploadColorEntry.add_style_class_name(
         "net-speed-color-entry-upload"
@@ -268,11 +279,9 @@ const Indicator = GObject.registerClass(
         label: `${this._arrowIndex + 1}) ${this._downArrow}  -  ${
           this._upArrow
         }`,
-        style_class: "button",
+        style_class: "button net-speed-arrow-button",
         can_focus: true,
         track_hover: true,
-        style:
-          "min-width: 100px; padding: 4px 12px; border-radius: 6px; font-size: 16px; background-color: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); color: #ffffff;",
       });
 
       this._colorFontBox.add_child(
@@ -284,9 +293,6 @@ const Indicator = GObject.registerClass(
       this._colorFontBox.add_child(
         makeInputRow(this._fontSizeLabel, this._fontSizeEntry)
       );
-      this._colorFontBox.add_child(
-        makeInputRow(this._arrowLabel, this._arrowButton)
-      );
       let colorFontMenuItem = new PopupBaseMenuItem({
         activate: false,
         can_focus: false,
@@ -294,6 +300,17 @@ const Indicator = GObject.registerClass(
       });
       colorFontMenuItem.add_child(this._colorFontBox);
       this.menu.addMenuItem(colorFontMenuItem);
+
+      // Separate arrow selection menu item
+      let arrowRow = makeInputRow(this._arrowLabel, this._arrowButton);
+      let arrowMenuItem = new PopupBaseMenuItem({
+        activate: false,
+        can_focus: false,
+        reactive: false,
+        style_class: "net-speed-arrow-menu-item",
+      });
+      arrowMenuItem.add_child(arrowRow);
+      this.menu.addMenuItem(arrowMenuItem);
 
       /*##############  End Popup Menu Display  ##############*/
 
@@ -316,16 +333,23 @@ const Indicator = GObject.registerClass(
           this._uploadColorEntry.destroyed ||
           !this._fontSizeEntry ||
           this._fontSizeEntry.destroyed
-        )
+        ) {
           return;
-        let dColor = this._downloadColorEntry
+        }
+
+        let dColorMatch = this._downloadColorEntry
           .get_text()
-          .trim()
-          .replace(/^#/, "");
-        let uColor = this._uploadColorEntry.get_text().trim().replace(/^#/, "");
+          .match(/[0-9a-fA-F]{6}/);
+        let dColor = dColorMatch ? dColorMatch[0] : "";
+        let uColorMatch = this._uploadColorEntry
+          .get_text()
+          .match(/[0-9a-fA-F]{6}/);
+        let uColor = uColorMatch ? uColorMatch[0] : "";
+
         let fSize = this._fontSizeEntry.get_text().trim().toLowerCase();
         if (/^[0-9a-fA-F]{6}$/.test(dColor)) {
           this._downloadColor = "#" + dColor;
+          this._downloadColorEntry.set_text(this._colorCodeSymbolized(dColor));
           this._downloadColorEntry.set_style(null);
           this._downloadColorEntry.set_style(
             this._getEntryStyleColor(this._downloadColor)
@@ -333,6 +357,7 @@ const Indicator = GObject.registerClass(
         }
         if (/^[0-9a-fA-F]{6}$/.test(uColor)) {
           this._uploadColor = "#" + uColor;
+          this._uploadColorEntry.set_text(this._colorCodeSymbolized(uColor));
           this._uploadColorEntry.set_style(null);
           this._uploadColorEntry.set_style(
             this._getEntryStyleColor(this._uploadColor)
@@ -385,6 +410,7 @@ const Indicator = GObject.registerClass(
         "key-focus-out",
         (actor) => {
           updateColorsAndFont();
+          actor.set_selection(-1, -1);
           return Clutter.EVENT_PROPAGATE;
         }
       );
@@ -398,6 +424,7 @@ const Indicator = GObject.registerClass(
         "key-focus-out",
         (actor) => {
           updateColorsAndFont();
+          actor.set_selection(-1, -1);
           return Clutter.EVENT_PROPAGATE;
         }
       );
@@ -411,6 +438,7 @@ const Indicator = GObject.registerClass(
         "key-focus-out",
         (actor) => {
           updateColorsAndFont();
+          actor.set_selection(-1, -1);
           return Clutter.EVENT_PROPAGATE;
         }
       );
@@ -422,7 +450,7 @@ const Indicator = GObject.registerClass(
         this._downArrow = DOWN_ARROW_ALTERNATIVES[this._arrowIndex];
         this._upArrow = UP_ARROW_ALTERNATIVES[this._arrowIndex];
         this._arrowButton.set_label(
-          `${this._arrowIndex + 1}) ${this._downArrow}  -  ${this._upArrow}`
+          `${this._arrowIndex + 1}.  ${this._downArrow}  -  ${this._upArrow}`
         );
         if (this._onColorFontChanged) this._onColorFontChanged();
       });
@@ -437,6 +465,7 @@ const Indicator = GObject.registerClass(
         "key-focus-out",
         (actor) => {
           updateRefreshInterval();
+          actor.set_selection(-1, -1);
           return Clutter.EVENT_PROPAGATE;
         }
       );
@@ -445,6 +474,39 @@ const Indicator = GObject.registerClass(
           global.stage.set_key_focus(null);
           return Clutter.EVENT_PROPAGATE;
         });
+      }
+
+      // Clear selections when menu closes
+      if (this.menu) {
+        this._connectSignal(this.menu, "open-state-changed", (menu, open) => {
+          if (!open) {
+            [
+              this._downloadColorEntry,
+              this._uploadColorEntry,
+              this._fontSizeEntry,
+              this._refreshEntry,
+            ].forEach((entry) => {
+              if (entry && !entry.destroyed) {
+                entry.get_clutter_text().set_selection(-1, -1);
+              }
+            });
+            global.stage.set_key_focus(null);
+          }
+        });
+      }
+    }
+
+    _colorCodeSymbolized(colorCode) {
+      return colorCode.replace("#", "") + " ■";
+    }
+
+    _updateThemeVariant(variant) {
+      this.menu.actor.remove_style_class_name("net-speed-menu-dark");
+      this.menu.actor.remove_style_class_name("net-speed-menu-light");
+      if (variant === "dark") {
+        this.menu.actor.add_style_class_name("net-speed-menu-dark");
+      } else {
+        this.menu.actor.add_style_class_name("net-speed-menu-light");
       }
     }
 
@@ -536,19 +598,23 @@ const Indicator = GObject.registerClass(
       this._arrowIndex = DOWN_ARROW_ALTERNATIVES.indexOf(this._downArrow);
       if (this._arrowIndex === -1) this._arrowIndex = 0;
 
-      this._downloadColorEntry.set_text(this._downloadColor.replace("#", ""));
+      this._downloadColorEntry.set_text(
+        this._colorCodeSymbolized(this._downloadColor)
+      );
       this._downloadColorEntry.set_style(null);
       this._downloadColorEntry.set_style(
         this._getEntryStyleColor(this._downloadColor)
       );
-      this._uploadColorEntry.set_text(this._uploadColor.replace("#", ""));
+      this._uploadColorEntry.set_text(
+        this._colorCodeSymbolized(this._uploadColor)
+      );
       this._uploadColorEntry.set_style(null);
       this._uploadColorEntry.set_style(
         this._getEntryStyleColor(this._uploadColor)
       );
       this._fontSizeEntry.set_text(this._fontSize);
       this._fontSizeEntry.set_style(null);
-      this._fontSizeEntry.set_style(this._getEntryStyleColor("#ffffff"));
+      this._fontSizeEntry.set_style(null);
       this._arrowButton.set_label(
         `${this._arrowIndex + 1}:  ${this._downArrow}  -  ${this._upArrow}`
       );

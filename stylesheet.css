@@ -1,5 +1,51 @@
 /* Net Speed Custom Extension Stylesheet */
 
+.net-speed-menu-dark .popup-menu-content {
+  background-color: rgba(29, 29, 29, 1);
+}
+
+.net-speed-menu-light .popup-menu-content {
+  background-color: rgba(255, 255, 255, 1);
+}
+
+.net-speed-menu-dark .net-speed-menu-label {
+  color: #ffffff;
+}
+
+.net-speed-menu-light .net-speed-menu-label {
+  color: #000000;
+}
+
+.net-speed-menu-dark .net-speed-input-entry {
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.net-speed-menu-light .net-speed-input-entry {
+  background-color: rgba(128, 128, 128, 0.14);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  color: #000000;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+.net-speed-menu .popup-menu-item {
+  margin-bottom: 5px;
+}
+
+.net-speed-menu-dark .net-speed-arrow-button {
+  background-color: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.net-speed-menu-light .net-speed-arrow-button {
+  background-color: rgba(0, 0, 0, 0.07);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: #000000;
+}
+
 .net-speed-label {
   font-family: monospace;
   font-weight: 500;
@@ -21,19 +67,17 @@
 }
 
 .net-speed-input-row {
-  spacing: 10px;
+  gap: 10px;
   min-width: 280px;
 }
 
 .net-speed-input-entry {
-  min-width: 60px;
-  max-width: 80px;
+  min-width: 80px;
+  max-width: 110px;
   padding: 2px 6px;
   border-radius: 6px;
   font-size: 14px;
-  background-color: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #ffffff;
+  font-weight: 500;
 }
 
 .net-speed-color-entry-download {
@@ -50,4 +94,3 @@
   border-radius: 6px;
   font-size: 16px;
 }
-
